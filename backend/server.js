@@ -23,19 +23,26 @@ app.use(express.json());
 const allowedOrigins = [
     "http://localhost:5173",
     "http://192.168.0.106:5173",
-    "https://task-manager-klkv.vercel.app"
+    "https://task-manager-omega-weld.vercel.app"
 ];
 
 app.use(cors({
-    origin: function (origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error("Not allowed by CORS"));
-        }
-    },
-    credentials: true
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+
+    if (
+      origin === "https://task-manager-omega-weld.vercel.app" ||
+      origin.endsWith(".vercel.app")
+    ) {
+      return callback(null, true);
+    }
+
+    callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true
 }));
+
+
 
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Credentials", "true");
