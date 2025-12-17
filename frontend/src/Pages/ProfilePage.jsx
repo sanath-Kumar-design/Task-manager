@@ -5,7 +5,7 @@ import { FaUserEdit } from "react-icons/fa";
 import { getBaseURL } from '../../utils/api';
 import getCroppedImg from '../components/helperComponents/cropImage';
 import Cropper from "react-easy-crop";
-import DeleteAccountModal from '../components/deleteAccountModal';
+import DeleteAccountModal from '../components/DeleteAccountModal';
 
 const baseURL = getBaseURL();
 
