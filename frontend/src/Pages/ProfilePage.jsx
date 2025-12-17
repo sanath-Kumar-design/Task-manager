@@ -39,6 +39,7 @@ const ProfilePage = () => {
 
             const uploadRes = await fetch(`${getBaseURL()}/upload`, {
                 method: "POST",
+                credentials: "include",
                 body: formData,
             });
 

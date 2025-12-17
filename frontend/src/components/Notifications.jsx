@@ -20,6 +20,7 @@ export default function Notifications({ className = "", inviteNotifications = []
     try {
       const res = await fetch(`${getBaseURL()}/accept-request`, {
         method: 'POST',
+        credentials: "include",
         headers: { "Content-Type": 'application/json' },
         body: JSON.stringify({ id })
       });

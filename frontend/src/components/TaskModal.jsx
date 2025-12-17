@@ -28,6 +28,7 @@ export default function TaskModal({ allowMultiple = true, isOpen, onClose}) {
 
             const res = await fetch(`${getBaseURL()}/create-task`, {
                 method: 'POST',
+                credentials: "include",
                 headers: { 'Content-Type': "application/json" },
                 body: JSON.stringify({ taskTitle, dueDate, priority, createdBy: user._id, taskDescription, assignedTo })
             })

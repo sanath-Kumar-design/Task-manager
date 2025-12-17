@@ -41,6 +41,7 @@ export default function UserInvitation({ isOpen, onClose, loggedInUser }) {
       });
       const res = await fetch(`${getBaseURL()}/send-invite`, {
         method: "POST",
+        credentials: "include",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fromUserId: loggedInUser._id,
