@@ -22,7 +22,8 @@ app.use(express.json());
 
 const allowedOrigins = [
     "http://localhost:5173",
-    "http://192.168.0.106:5173"
+    "http://192.168.0.106:5173",
+    "https://task-manager-klkv.vercel.app"
 ];
 
 app.use(cors({
@@ -33,7 +34,7 @@ app.use(cors({
             callback(new Error("Not allowed by CORS"));
         }
     },
-    credentials: true 
+    credentials: true
 }));
 
 app.use((req, res, next) => {
@@ -303,28 +304,28 @@ app.post("/create-task", async (req, res) => {
 })
 
 app.get("/assignable-users/:userId", async (req, res) => {
-  const currentUserId = req.params.userId;
+    const currentUserId = req.params.userId;
 
-  try {
-    const invites = await FriendRequest.find({
-      status: "accepted",
-      $or: [
-        { from: currentUserId },
-        { to: currentUserId }
-      ]
-    }).populate("from to", "username _id");
+    try {
+        const invites = await FriendRequest.find({
+            status: "accepted",
+            $or: [
+                { from: currentUserId },
+                { to: currentUserId }
+            ]
+        }).populate("from to", "username _id");
 
-    const usersToAssign = invites.map(inv =>
-      inv.from._id.toString() === currentUserId ? inv.to : inv.from
-    );
+        const usersToAssign = invites.map(inv =>
+            inv.from._id.toString() === currentUserId ? inv.to : inv.from
+        );
 
-    const uniqueUsers = [...new Map(usersToAssign.map(u => [u._id.toString(), u])).values()];
+        const uniqueUsers = [...new Map(usersToAssign.map(u => [u._id.toString(), u])).values()];
 
-    res.json(uniqueUsers);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
+        res.json(uniqueUsers);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+    }
 });
 
 
