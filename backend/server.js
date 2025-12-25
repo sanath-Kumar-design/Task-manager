@@ -31,7 +31,7 @@ app.use(cors({
     if (!origin) return callback(null, true);
 
     if (
-      origin === "https://task-manager-omega-weld.vercel.app" ||
+      allowedOrigins.includes(origin) ||
       origin.endsWith(".vercel.app")
     ) {
       return callback(null, true);
@@ -41,6 +41,7 @@ app.use(cors({
   },
   credentials: true
 }));
+
 
 
 

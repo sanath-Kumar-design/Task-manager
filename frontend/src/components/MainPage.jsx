@@ -8,7 +8,7 @@ import { FaUserCircle } from "react-icons/fa";
 import { MdEdit } from "react-icons/md";
 import { MdDeleteForever } from "react-icons/md";
 import { getBaseURL } from '../../utils/api';
-
+import { IoAddOutline } from "react-icons/io5";
 import { toast } from 'react-toastify';
 
 
@@ -19,11 +19,13 @@ export default function MainPage({ collaborators, selected }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [taskCard, setTaskCard] = useState([])
     const [filterOptions, setFilterOptions] = useState("priority")
-    const [status, setStatus] = useState("status")
     const [selectedTaskTypes, setSelectedTaskTypes] = useState("")
     const [displayedTasks, setDisplayedTasks] = useState([...taskCard]);
     const completedref = useRef(null)
     const overdueref = useRef(null)
+    const [statusList, setStatusList] = useState("In Progress")
+
+    const taskStatus = ["In Progress", "Completed", "Overdue"]
 
     const priorityOptions = [
         { value: 'priority', label: 'Sort By Priority' },
@@ -39,25 +41,6 @@ export default function MainPage({ collaborators, selected }) {
 
     const { user } = useUser()
 
-    const handleFilterChange = (selectedOption) => {
-        setStatus(selectedOption);
-
-        if (selectedOption.value === "Completed" && completedref.current) {
-            const top = completedref.current.getBoundingClientRect().top + window.scrollY;
-            const offset = 80;
-            window.scrollTo({
-                top: top - offset,
-                behavior: "smooth"
-            });
-        } else if (selectedOption.value === "Overdue" && overdueref.current) {
-            const top = overdueref.current.getBoundingClientRect().top + window.scrollY;
-            const offset = 80;
-            window.scrollTo({
-                top: top - offset,
-                behavior: "smooth"
-            });
-        }
-    }
 
 
     // GET TASKS
@@ -190,19 +173,36 @@ export default function MainPage({ collaborators, selected }) {
                 collaborators={collaborators}
             />
             <main className="flex-1 p-6 border-red-500 ml-0 md:ml-70">
-                <div className="max-w-6xl mx-auto bg-[rgb(1,4,9)]">
+                <div className="max-w-6xl mx-auto">
                     <div className="flex justify-between items-center mb-6">
                         <div>
                             <h1 className="text-2xl font-bold text-gray-100">My Tasks</h1>
                             <p className="text-gray-100 hidden lg:inline-flex">Manage your tasks and collaborate with your team</p>
                         </div>
-                        <button onClick={openTaskModal} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center whitespace-nowrap">
-                            New Task
-                        </button>
+                        <div className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex gap-1  items-center whitespace-nowrap">
+                            <button onClick={openTaskModal} >
+                                New Task
+                            </button>
+                            <div className='text-white font-extrabold text-lg border-r pr-2'>+</div>
+                        </div>
                     </div>
+                    <div className='flex items-center'>
+                        <div className="flex my-3 rounded-lg overflow-hidden border-white border w-fit ">
+                            {taskStatus.map(status => (
+                                <div
+                                    key={status}
+                                    className="bg-gray-500 backdrop-blur-2xl text-white"
+                                >
+                                    <button className={`px-2 py-1 ${statusList === status ? "bg-gray-400" : "bg-gray-500"} cursor-pointer`}
+                                        onClick={() => setStatusList(status)}
+                                    >
+                                        {status}
+                                    </button>
+                                </div>
+                            ))}
 
-                    <div className="bg-[rgb(13,17,23)] border border-gray-500 rounded-lg p-4 mb-6 shadow-sm  w-fit lg:w-full">
-                        <div className="flex flex-wrap gap-4">
+                        </div>
+                        <div className="flex flex-wrap gap-4 ms-2 bg-gray-400">
                             <Select
                                 options={priorityOptions}
                                 value={filterOptions}
@@ -210,178 +210,52 @@ export default function MainPage({ collaborators, selected }) {
                                 placeholder='Select Priority'
                                 isSearchable={false}
                             />
-                            <Select
-                                options={statusOptions}
-                                placeholder='Select Status'
-                                isSearchable={false}
-                                value={status}
-                                onChange={handleFilterChange}
-                            />
                         </div>
                     </div>
 
-                    <div>
-                        <div className='my-4'>
-                            <h1 className="text-2xl font-bold text-gray-100">Tasks</h1>
-                        </div>
-
-                        {displayedTasks && displayedTasks.filter(task => {
-                            if (task.isCompleted) return false;
-                            const due = new Date(task.dueDate);
-                            due.setHours(0, 0, 0, 0);
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-                            return due >= today;
-                        }).length > 0 ? (
-                            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {displayedTasks.filter(task => {
-                                    if (task.isCompleted) return false;
-                                    const due = new Date(task.dueDate);
-                                    due.setHours(0, 0, 0, 0);
-                                    const today = new Date();
-                                    today.setHours(0, 0, 0, 0);
-                                    return due >= today;
-                                }).map(task => (
-                                    <div key={task._id} className="task-card bg-[rgb(13,17,23)] rounded-lg shadow-sm p-4 priority-high border-gray-500 border">
-                                        <div className="flex justify-between items-start mb-3">
-                                            <span className={`text-xs px-2 py-1 rounded ${task.priority === "High" ? "bg-red-100 text-red-800" :
-                                                task.priority === "Medium" ? "bg-blue-100 text-blue-800" :
-                                                    "bg-green-100 text-green-800"
-                                                }`}>{`${task.priority} Priority`}</span>
-
-                                            <div className="flex space-x-2">
-                                                <MdEdit className='cursor-pointer hover:text-gray-500' />
-                                                <div className='cursor-pointer' onClick={() => deleteTask(task._id)}>
-                                                    <MdDeleteForever className='text-red-600' />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <h3 className={`font-semibold text-gray-100 mb-2 ${task.isCompleted ? "line-through" : ""}`}>{task.title}</h3>
-                                        <p className={`text-gray-600 text-sm mb-3 line-clamp-1 ${task.isCompleted ? "line-through" : ""}`}>{task.description}</p>
-
-                                        <div className="flex justify-between items-center mb-3">
-                                            <span className="text-sm text-red-600 font-medium">{formatDate(task.dueDate)}</span>
-                                            <div className="flex -space-x-2">
-                                                {task.assignedTo?.map(u => (
-                                                    u.profilePic ? (
-                                                        <img key={u._id} src={`${getBaseURL()}${u.profilePic}`} alt={u.username} className='w-8 h-8 rounded-full border-2 border-white' />
-                                                    ) : (
-                                                        <FaUserCircle key={u._id} className="w-8 h-8 text-gray-400" />
-                                                    )
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="flex justify-between items-center text-xs md:text-sm">
-                                            <button
-                                                onClick={() => markCompleted(task._id)}
-                                                className={task.isCompleted ? "text-green-600" : "text-blue-600"}
-                                            >
-                                                {task.isCompleted ? "Completed" : "Mark as Complete"}
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className='text-xl text-red-500 font-bold text-center mt-4 border border-gray-200 rounded-2xl py-10'>No Pending Tasks</div>
-                        )}
-                    </div>
-
-
-
-                    <div>
-                        <div ref={completedref}>
+                    {statusList === "In Progress" && (
+                        <div>
                             <div className='my-4'>
-                                <h1 className="text-2xl font-bold text-gray-100">Completed Tasks</h1>
+                                <h1 className="text-2xl font-bold text-white">Tasks</h1>
                             </div>
 
-                            {completedTasks && completedTasks.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {completedTasks.map(task => (
-                                        <div key={task._id} className="task-card bg-[rgb(13,17,23)] rounded-lg shadow-sm p-4 priority-high border border-gray-400">
+                            {displayedTasks && displayedTasks.filter(task => {
+                                if (task.isCompleted) return false;
+                                const due = new Date(task.dueDate);
+                                due.setHours(0, 0, 0, 0);
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                return due >= today;
+                            }).length > 0 ? (
+                                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {displayedTasks.filter(task => {
+                                        if (task.isCompleted) return false;
+                                        const due = new Date(task.dueDate);
+                                        due.setHours(0, 0, 0, 0);
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        return due >= today;
+                                    }).map(task => (
+                                        <div key={task._id} className="task-card bg-white rounded-lg shadow-sm p-4 priority-high border-gray-500 border">
                                             <div className="flex justify-between items-start mb-3">
                                                 <span className={`text-xs px-2 py-1 rounded ${task.priority === "High" ? "bg-red-100 text-red-800" :
                                                     task.priority === "Medium" ? "bg-blue-100 text-blue-800" :
                                                         "bg-green-100 text-green-800"
                                                     }`}>{`${task.priority} Priority`}</span>
+
                                                 <div className="flex space-x-2">
+                                                    <MdEdit className='cursor-pointer hover:text-gray-500' />
                                                     <div className='cursor-pointer' onClick={() => deleteTask(task._id)}>
                                                         <MdDeleteForever className='text-red-600' />
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <h3 className="font-semibold text-gray-100 mb-2 line-through">{task.title}</h3>
-                                            <p className="text-gray-600 text-sm mb-3 line-through">{task.description}</p>
-
-                                            <div className="flex justify-between items-center mb-3 ">
-                                                <span className="text-sm text-red-600 font-medium">
-                                                    {formatDate(task.dueDate)}
-                                                </span>
-                                                <div className="flex -space-x-2">
-                                                    {task.assignedTo?.map(u => (
-                                                        u.profilePic ? (
-                                                            <img key={u._id} src={`${getBaseURL()}${u.profilePic}`} alt={u.username} className='w-8 h-8 rounded-full border-2 border-white' />
-                                                        ) : (
-                                                            <FaUserCircle key={u._id} className="w-8 h-8 text-gray-400" />
-                                                        )
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            <div className="flex justify-between items-center">
-                                                <button
-                                                    onClick={() => markCompleted(task._id)}
-                                                    className={task.isCompleted ? "text-green-600 text-sm font-medium" : "text-blue-600 text-sm font-medium"}
-                                                >
-                                                    {task.isCompleted ? "Completed" : "Mark as Completed"}
-                                                </button>
-
-                                                <button
-                                                    onClick={() => reopenTask(task._id)}
-                                                    className='text-blue-900 text-sm font-medium hover:text-blue-900'
-                                                >
-                                                    Re-Open
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className='text-xl text-red-500 font-bold text-center mt-4 border border-gray-200 rounded-2xl py-10'>No Completed Tasks</div>
-                            )}
-                        </div>
-
-                        <div ref={overdueref}>
-                            <div className='my-4'>
-                                <h1 className="text-2xl font-bold text-gray-100">OverDue</h1>
-                            </div>
-
-                            {taskOverDue && taskOverDue.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {taskOverDue.map(task => (
-                                        <div key={task._id} className="task-card bg-[rgb(13,17,23)] rounded-lg shadow-sm p-4 priority-high border border-gray-500">
-                                            <div className="flex justify-between items-start mb-3">
-                                                <span className={`text-xs px-2 py-1 rounded ${task.priority === "High" ? "bg-red-100 text-red-800" :
-                                                    task.priority === "Medium" ? "bg-blue-100 text-blue-800" :
-                                                        "bg-green-100 text-green-800"
-                                                    }`}>{`${task.priority} Priority`}</span>
-                                                <div className="flex space-x-2">
-                                                    <div className='cursor-pointer' onClick={() => deleteTask(task._id)}>
-                                                        <MdDeleteForever className='text-red-600' />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <h3 className="font-semibold text-gray-100 mb-2 ">{task.title}</h3>
-                                            <p className="text-gray-600 text-sm mb-3 ">{task.description}</p>
+                                            <h3 className={`font-semibold text-black mb-2 ${task.isCompleted ? "line-through" : ""}`}>{task.title}</h3>
+                                            <p className={`text-gray-600 text-sm mb-3 line-clamp-1 ${task.isCompleted ? "line-through" : ""}`}>{task.description}</p>
 
                                             <div className="flex justify-between items-center mb-3">
-                                                <span className="text-sm text-red-600 font-medium">
-                                                    {formatDate(task.dueDate)}
-                                                </span>
+                                                <span className="text-sm text-red-600 font-medium">{formatDate(task.dueDate)}</span>
                                                 <div className="flex -space-x-2">
                                                     {task.assignedTo?.map(u => (
                                                         u.profilePic ? (
@@ -393,28 +267,153 @@ export default function MainPage({ collaborators, selected }) {
                                                 </div>
                                             </div>
 
-                                            <div className="flex justify-between items-center">
+                                            <div className="flex justify-between items-center text-xs md:text-sm">
                                                 <button
                                                     onClick={() => markCompleted(task._id)}
-                                                    className={task.isCompleted ? "text-green-600 text-sm font-medium" : "text-blue-600 text-sm font-medium"}
+                                                    className={task.isCompleted ? "text-green-600" : "text-blue-600"}
                                                 >
-                                                    {task.isCompleted ? "Completed" : "Mark as Completed"}
-                                                </button>
-
-                                                <button
-                                                    onClick={() => reopenTask(task._id)}
-                                                    className='text-blue-900 text-sm font-medium hover:text-blue-900'
-                                                >
-                                                    Re-Open
+                                                    {task.isCompleted ? "Completed" : "Mark as Complete"}
                                                 </button>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <div className='text-xl text-red-500 font-bold text-center mt-4 border border-gray-200 rounded-2xl py-10'>No Overdues</div>
+                                <div className='text-xl  bg-white/10 backdrop-blur-md text-red-500 font-bold text-center mt-4 border border-gray-200 rounded-2xl py-10'>No Pending Tasks</div>
                             )}
                         </div>
+                    )}
+
+
+                    <div>
+
+                        {statusList === "Completed" && (
+                            <div ref={completedref}>
+                                <div className='my-4'>
+                                    <h1 className="text-2xl font-bold text-gray-100">Completed Tasks</h1>
+                                </div>
+
+                                {completedTasks && completedTasks.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {completedTasks.map(task => (
+                                            <div key={task._id} className="task-card bg-white rounded-lg shadow-sm p-4 priority-high border border-gray-400">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <span className={`text-xs px-2 py-1 rounded ${task.priority === "High" ? "bg-red-100 text-red-800" :
+                                                        task.priority === "Medium" ? "bg-blue-100 text-blue-800" :
+                                                            "bg-green-100 text-green-800"
+                                                        }`}>{`${task.priority} Priority`}</span>
+                                                    <div className="flex space-x-2">
+                                                        <div className='cursor-pointer' onClick={() => deleteTask(task._id)}>
+                                                            <MdDeleteForever className='text-red-600' />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <h3 className="font-semibold text-black mb-2 line-through">{task.title}</h3>
+                                                <p className="text-gray-600 text-sm mb-3 line-through">{task.description}</p>
+
+                                                <div className="flex justify-between items-center mb-3 ">
+                                                    <span className="text-sm text-red-600 font-medium">
+                                                        {formatDate(task.dueDate)}
+                                                    </span>
+                                                    <div className="flex -space-x-2">
+                                                        {task.assignedTo?.map(u => (
+                                                            u.profilePic ? (
+                                                                <img key={u._id} src={`${getBaseURL()}${u.profilePic}`} alt={u.username} className='w-8 h-8 rounded-full border-2 border-white' />
+                                                            ) : (
+                                                                <FaUserCircle key={u._id} className="w-8 h-8 text-gray-400" />
+                                                            )
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex justify-between items-center">
+                                                    <button
+                                                        onClick={() => markCompleted(task._id)}
+                                                        className={task.isCompleted ? "text-green-600 text-sm font-medium" : "text-blue-600 text-sm font-medium"}
+                                                    >
+                                                        {task.isCompleted ? "Completed" : "Mark as Completed"}
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => reopenTask(task._id)}
+                                                        className='text-blue-900 text-sm font-medium hover:text-blue-900'
+                                                    >
+                                                        Re-Open
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className='text-xl bg-white/10 backdrop-blur-md text-red-500 font-bold text-center mt-4 border border-gray-200 rounded-2xl py-10'>No Completed Tasks</div>
+                                )}
+                            </div>
+                        )}
+
+                        {statusList === "Overdue" && (
+                            <div ref={overdueref}>
+                                <div className='my-4'>
+                                    <h1 className="text-2xl font-bold text-gray-100">OverDue</h1>
+                                </div>
+
+                                {taskOverDue && taskOverDue.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {taskOverDue.map(task => (
+                                            <div key={task._id} className="task-card bg-[rgb(13,17,23)] rounded-lg shadow-sm p-4 priority-high border border-gray-500">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <span className={`text-xs px-2 py-1 rounded ${task.priority === "High" ? "bg-red-100 text-red-800" :
+                                                        task.priority === "Medium" ? "bg-blue-100 text-blue-800" :
+                                                            "bg-green-100 text-green-800"
+                                                        }`}>{`${task.priority} Priority`}</span>
+                                                    <div className="flex space-x-2">
+                                                        <div className='cursor-pointer' onClick={() => deleteTask(task._id)}>
+                                                            <MdDeleteForever className='text-red-600' />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <h3 className="font-semibold text-gray-100 mb-2 ">{task.title}</h3>
+                                                <p className="text-gray-600 text-sm mb-3 ">{task.description}</p>
+
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <span className="text-sm text-red-600 font-medium">
+                                                        {formatDate(task.dueDate)}
+                                                    </span>
+                                                    <div className="flex -space-x-2">
+                                                        {task.assignedTo?.map(u => (
+                                                            u.profilePic ? (
+                                                                <img key={u._id} src={`${getBaseURL()}${u.profilePic}`} alt={u.username} className='w-8 h-8 rounded-full border-2 border-white' />
+                                                            ) : (
+                                                                <FaUserCircle key={u._id} className="w-8 h-8 text-gray-400" />
+                                                            )
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex justify-between items-center">
+                                                    <button
+                                                        onClick={() => markCompleted(task._id)}
+                                                        className={task.isCompleted ? "text-green-600 text-sm font-medium" : "text-blue-600 text-sm font-medium"}
+                                                    >
+                                                        {task.isCompleted ? "Completed" : "Mark as Completed"}
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => reopenTask(task._id)}
+                                                        className='text-blue-900 text-sm font-medium hover:text-blue-900'
+                                                    >
+                                                        Re-Open
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className='text-xl  bg-white/10 backdrop-blur-md text-red-500 font-bold text-center mt-4 border border-gray-200 rounded-2xl py-10'>No Overdues</div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </main>

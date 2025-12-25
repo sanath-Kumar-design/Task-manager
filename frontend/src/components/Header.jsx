@@ -118,7 +118,7 @@ export default function Header({ collaborators, setCollaborators }) {
             />
 
 
-            <header className="bg-[rgb(1,4,9)] border-gray-500 border-b shadow-white ">
+            <header className="bg-black/10 backdrop-blur-lg border-gray-500 border-b shadow-white ">
                 <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <Link to="/homepage">
