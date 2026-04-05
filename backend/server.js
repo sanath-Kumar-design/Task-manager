@@ -34,6 +34,7 @@ const localNetworkOriginPattern = /^http:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{
 
 const isAllowedOrigin = (origin) =>
     allowedOrigins.includes(origin) ||
+    origin.endsWith(".vercel.app") ||
     localNetworkOriginPattern.test(origin);
 
 app.use(cors({
