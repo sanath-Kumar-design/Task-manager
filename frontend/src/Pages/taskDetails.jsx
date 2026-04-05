@@ -7,7 +7,7 @@ import { getBaseURL } from '../../utils/api';
 import { MdEdit } from "react-icons/md";
 import CircularProgress from '../components/CircularProgress';
 console.log("BASE URL:", getBaseURL());
-import EditTaskModal from '../components/editTaskModal';
+import EditTaskModal from '../components/EditTaskModal';
 import { Navigate } from 'react-router-dom';
 import { CiCircleMinus } from "react-icons/ci";
 import DeleteSubTaskModal from '../components/DeleteSubTaskModal';
