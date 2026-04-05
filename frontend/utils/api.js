@@ -5,5 +5,6 @@ export const getBaseURL = () => {
     return "http://localhost:5000";
   }
 
-  return `http://${hostname}:5000`;
+  // return `http://${hostname}:5000`;
+  return "https://task-manager-oqyk.onrender.com";
 };

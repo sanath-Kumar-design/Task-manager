@@ -34,8 +34,20 @@ const localNetworkOriginPattern = /^http:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{
 
 const isAllowedOrigin = (origin) =>
     allowedOrigins.includes(origin) ||
-    origin.endsWith(".vercel.app") ||
     localNetworkOriginPattern.test(origin);
+
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+
+        if (isAllowedOrigin(origin)) {
+            return callback(null, true);
+        }
+
+        callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true
+}));
 
 const getCookieOptions = (req, { includeMaxAge = true } = {}) => {
     const forwardedProto = req.headers["x-forwarded-proto"];
@@ -57,18 +69,7 @@ const getCookieOptions = (req, { includeMaxAge = true } = {}) => {
     return cookieOptions;
 };
 
-app.use(cors({
-    origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
 
-        if (isAllowedOrigin(origin)) {
-            return callback(null, true);
-        }
-
-        callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true
-}));
 
 
 
