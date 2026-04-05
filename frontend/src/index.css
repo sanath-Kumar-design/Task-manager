@@ -19,6 +19,14 @@
 .animate-scaleUp {
     animation: scaleUp 0.3s ease-out forwards;
 }
+:root {
+  --primary-color: #0066cc;
+  --font-color: #333;
+  --bg-color: #f9f9f9;
+}
+body { font-family: 'Segoe UI', sans-serif; color: var(--font-color); background: var(--bg-color); }
+.navbar { background: var(--primary-color); color: white; padding: 1rem; }
+
 
 body {
    /* background-image: url("/space.jpg"); */
