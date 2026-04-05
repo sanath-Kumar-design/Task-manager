@@ -10,12 +10,13 @@ import { MdDeleteForever } from "react-icons/md";
 import { getBaseURL } from '../../utils/api';
 import { IoAddOutline } from "react-icons/io5";
 import { toast } from 'react-toastify';
-
+import { FaCaretDown } from "react-icons/fa";
+import { useNavigate } from 'react-router-dom';
 
 export default function MainPage({ collaborators, selected }) {
 
 
-
+    const navigate = useNavigate()
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [taskCard, setTaskCard] = useState([])
     const [filterOptions, setFilterOptions] = useState("priority")
@@ -50,8 +51,10 @@ export default function MainPage({ collaborators, selected }) {
 
         const getTasks = async () => {
             try {
+                console.log("Fetching tasks...");
                 const res = await fetch(`${getBaseURL()}/show-task?userId=${user._id}`, {
-                    method: 'GET'
+                    method: 'GET',
+                    credentials: 'include'
                 });
                 if (!res.ok) {
                     const text = await res.text();
@@ -172,44 +175,47 @@ export default function MainPage({ collaborators, selected }) {
                 onClose={closeTaskModal}
                 collaborators={collaborators}
             />
-            <main className="flex-1 p-6 border-red-500 ml-0 md:ml-70">
+            <main className="flex-1 p-6 border-red-500 mt-10">
                 <div className="max-w-6xl mx-auto">
-                    <div className="flex justify-between items-center mb-6">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-100">My Tasks</h1>
-                            <p className="text-gray-100 hidden lg:inline-flex">Manage your tasks and collaborate with your team</p>
+                    <div className='border border-gray-300 py-4 px-4 rounded-2xl'>
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h1 className="text-3xl font-bold ">My Tasks</h1>
+                                <p className=" hidden lg:inline-flex">Manage your tasks and collaborate with your team</p>
+                            </div>
+                            <div className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex gap-1  items-center whitespace-nowrap">
+                                <button onClick={openTaskModal} >
+                                    New Task
+                                </button>
+                                <div className='text-white font-extrabold text-lg border-r pr-2'>+</div>
+                                <div><FaCaretDown /></div>
+                            </div>
                         </div>
-                        <div className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex gap-1  items-center whitespace-nowrap">
-                            <button onClick={openTaskModal} >
-                                New Task
-                            </button>
-                            <div className='text-white font-extrabold text-lg border-r pr-2'>+</div>
-                        </div>
-                    </div>
-                    <div className='flex items-center'>
-                        <div className="flex my-3 rounded-lg overflow-hidden border-white border w-fit ">
-                            {taskStatus.map(status => (
-                                <div
-                                    key={status}
-                                    className="bg-gray-500 backdrop-blur-2xl text-white"
-                                >
-                                    <button className={`px-2 py-1 ${statusList === status ? "bg-gray-400" : "bg-gray-500"} cursor-pointer`}
-                                        onClick={() => setStatusList(status)}
+                        <div className='md:flex w-fit items-center'>
+                            <div className=" flex my-3 rounded-lg overflow-hidden border-white border text-xs md:text-sm ">
+                                {taskStatus.map(status => (
+                                    <div
+                                        key={status}
+                                        className="bg-gray-500 backdrop-blur-2xl text-white"
                                     >
-                                        {status}
-                                    </button>
-                                </div>
-                            ))}
+                                        <button className={`px-2 py-1 ${statusList === status ? "bg-gray-400" : "bg-gray-500"} cursor-pointer border`}
+                                            onClick={() => setStatusList(status)}
+                                        >
+                                            {status}
+                                        </button>
+                                    </div>
+                                ))}
 
-                        </div>
-                        <div className="flex flex-wrap gap-4 ms-2 bg-gray-400">
-                            <Select
-                                options={priorityOptions}
-                                value={filterOptions}
-                                onChange={(selectedOption) => setFilterOptions(selectedOption)}
-                                placeholder='Select Priority'
-                                isSearchable={false}
-                            />
+                            </div>
+                            <div className="flex flex-wrap gap-4 ms-2 bg-gray-400 w-fit text-xs md:text-sm">
+                                <Select
+                                    options={priorityOptions}
+                                    value={filterOptions}
+                                    onChange={(selectedOption) => setFilterOptions(selectedOption)}
+                                    placeholder='Select Priority'
+                                    isSearchable={false}
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -227,7 +233,7 @@ export default function MainPage({ collaborators, selected }) {
                                 today.setHours(0, 0, 0, 0);
                                 return due >= today;
                             }).length > 0 ? (
-                                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ">
                                     {displayedTasks.filter(task => {
                                         if (task.isCompleted) return false;
                                         const due = new Date(task.dueDate);
@@ -236,7 +242,11 @@ export default function MainPage({ collaborators, selected }) {
                                         today.setHours(0, 0, 0, 0);
                                         return due >= today;
                                     }).map(task => (
-                                        <div key={task._id} className="task-card bg-white rounded-lg shadow-sm p-4 priority-high border-gray-500 border">
+                                        <div
+                                            key={task._id}
+                                            className="task-card relative group bg-white rounded-lg shadow-sm p-4 overflow-hidden border border-gray-200"
+                                        >
+
                                             <div className="flex justify-between items-start mb-3">
                                                 <span className={`text-xs px-2 py-1 rounded ${task.priority === "High" ? "bg-red-100 text-red-800" :
                                                     task.priority === "Medium" ? "bg-blue-100 text-blue-800" :
@@ -244,7 +254,6 @@ export default function MainPage({ collaborators, selected }) {
                                                     }`}>{`${task.priority} Priority`}</span>
 
                                                 <div className="flex space-x-2">
-                                                    <MdEdit className='cursor-pointer hover:text-gray-500' />
                                                     <div className='cursor-pointer' onClick={() => deleteTask(task._id)}>
                                                         <MdDeleteForever className='text-red-600' />
                                                     </div>
@@ -273,6 +282,9 @@ export default function MainPage({ collaborators, selected }) {
                                                     className={task.isCompleted ? "text-green-600" : "text-blue-600"}
                                                 >
                                                     {task.isCompleted ? "Completed" : "Mark as Complete"}
+                                                </button>
+                                                <button onClick={() => navigate(`/task/${task._id}`)} className='text-blue-600 underline cursor-pointer' >
+                                                    See Task
                                                 </button>
                                             </div>
                                         </div>
@@ -310,7 +322,7 @@ export default function MainPage({ collaborators, selected }) {
                                                 </div>
 
                                                 <h3 className="font-semibold text-black mb-2 line-through">{task.title}</h3>
-                                                <p className="text-gray-600 text-sm mb-3 line-through">{task.description}</p>
+                                                <p className="text-gray-600 text-sm mb-3 line-through line-clamp-1">{task.description}</p>
 
                                                 <div className="flex justify-between items-center mb-3 ">
                                                     <span className="text-sm text-red-600 font-medium">

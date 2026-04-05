@@ -1,4 +1,5 @@
 import fetch from "node-fetch";
+import { getBaseURL } from "../../frontend/utils/api";
 
 const userId = "68e244daaf4ad3667d67335a"; // test user ID
 const numberOfTasks = 20; // number of tasks to create

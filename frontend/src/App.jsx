@@ -9,7 +9,7 @@ import ProfilePage from "./Pages/ProfilePage";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { getBaseURL } from "../utils/api";
-
+import TaskDetails from "./Pages/taskDetails";
 
 export default function App() {
 
@@ -53,8 +53,10 @@ useEffect(() => {
           <Route path='/' element={<Signup />} />
           <Route path='/login' element={<Login />} />
           <Route path="/homepage" element={<Homepage setUser={setUser} />} />
+          <Route path="/task/:id" element={<TaskDetails />} />
         </Routes>
       </UserContext.Provider>
     </div>
   )
 }
+

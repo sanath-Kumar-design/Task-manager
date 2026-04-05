@@ -21,7 +21,7 @@
 }
 
 body {
-  background-image: url("space.jpg");
+   /* background-image: url("/space.jpg"); */
   background-size: cover;
   background-repeat: no-repeat;
   background-attachment: fixed;
@@ -30,6 +30,15 @@ body::after {
   content: "";
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.3); /* increase 0.5 → darker */
+  /* background: rgba(0, 0, 0, 0.3); */
   pointer-events: none;
+  z-index: -1;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+h1, h2 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }

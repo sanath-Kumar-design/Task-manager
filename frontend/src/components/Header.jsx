@@ -9,9 +9,13 @@ import { Link } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { RiUserSearchFill } from "react-icons/ri";
 import ProfilePage from '../Pages/ProfilePage';
+import { MdMenu } from "react-icons/md";
+import { FaHome } from "react-icons/fa";
+import { useNavigate } from 'react-router-dom';
+import { IoHomeOutline } from "react-icons/io5";
 
 
-export default function Header({ collaborators, setCollaborators }) {
+export default function Header({ collaborators, setCollaborators, isSidebarOpen, setSidebarOpen }) {
 
     const { user, setUser } = useUser();
     const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -20,8 +24,10 @@ export default function Header({ collaborators, setCollaborators }) {
     const [isHovering, setIsHovering] = useState(false)
     const dropdownref = useRef(null)
     const location = useLocation()
+    const navigate = useNavigate()
 
 
+    const isHome = location.pathname === "/homepage";
     const isProfilePage = location.pathname == "/profilePage"
     useEffect(() => {
         function handleClickOutside(event) {
@@ -48,8 +54,8 @@ export default function Header({ collaborators, setCollaborators }) {
                     credentials: "include"
                 });
 
+                console.log("userInfo status:", res.status);
                 const data = await res.json();
-
 
                 if (res.ok) {
                     setUser(data)
@@ -110,7 +116,7 @@ export default function Header({ collaborators, setCollaborators }) {
 
 
     return (
-        <div>
+        <div className=''>
             <UserInvitation
                 isOpen={isInviteOpen}
                 onClose={closeInvitation}
@@ -118,52 +124,46 @@ export default function Header({ collaborators, setCollaborators }) {
             />
 
 
-            <header className="bg-black/10 backdrop-blur-lg border-gray-500 border-b shadow-white ">
+            <header  className=" backdrop-blur-lg border-gray-300 border-b shadow-white ">
+
                 <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
-                        <Link to="/homepage">
-                            <div className="flex items-center cursor-pointer">
-                                <img src="logo.png" alt="PlanIt logo with modern blue gradient design and checkmark symbol" className="h-8 w-8 rounded" />
-                                <span className="ml-2 text-xl font-bold text-gray-200">PlanIt</span>
-                            </div>
-                        </Link>
-                        {!isProfilePage && (
+                        <div>
+                            {isHome ? (
+                                <button onClick={() => setSidebarOpen(prev => !prev)} className="flex items-center cursor-pointer">
+                                    <MdMenu className='text-xl md:text-2xl cursor-pointer' />
+                                </button>
+                            ) : (
+                                <Link to={"/homepage"}>
+                                    <button onClick={() => {
+                                    }}
+                                        className="flex items-center cursor-pointer ">
+                                        <IoHomeOutline className='text-xl md:text-2xl cursor-pointer' />
+                                    </button>
+                                </Link>
+                            )}
+
+                        </div>
+                        {/* {!isProfilePage && (
                             <div className="hidden lg:flex max-w-2xl mx-4">
                                 <div className="relative">
-                                    <input type="text" placeholder="Search tasks..." className="text-gray-200  w-full pl-5 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-                                    <i className="fas fa-search absolute left-3 top-3 text-gray-200"></i>
+                                    <input type="text" placeholder="Search tasks..." className="w-full pl-5 pr-4 py-2 border border-gray-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                                    <i className="fas fa-search absolute left-3 top-3"></i>
                                 </div>
                             </div>
-                        )}
-                        <div className="flex items-center space-x-2 " ref={dropdownref}>
-                            <div className='flex mr-5 items-center'>
-                                <div className="w-5 h-5 relative mr-4"
-                                    onMouseEnter={() => setIsHovering(true)}
-                                    onMouseLeave={() => setIsHovering(false)}
+                        )} */}
+                        <div className="flex items-center" ref={dropdownref}>
+                            <div className='flex mr-5 items-center justify-between'>
+                                <div className="w-5 h-5 relative mr-4 "
+                                // onMouseEnter={() => setIsHovering(true)}
+                                // onMouseLeave={() => setIsHovering(false)}
                                 >
                                     <FiBell
-                                        className="w-5 h-5 cursor-pointer text-gray-200"
+                                        className="w-5 h-5 cursor-pointer"
                                         onClick={() => setOpenDropdown(openDropdown === "full" ? null : "full")}
                                     />
                                     <div className="h-2 w-2 bg-red-600 rounded-full absolute top-0 right-0" ></div>
-                                    {isHovering && openDropdown !== "full" && (
-                                        <div className="absolute border-2 border-gray-300 w-80 top-11 bg-white shadow px-6 py-2 left-1/2 -translate-x-1/2 rounded-lg">
-                                            {inviteNotifications.length > 0 ? (
-                                                inviteNotifications.map(req => (
 
-                                                    <div
-                                                        key={req.id}
-                                                        className='py-1 border-b border-gray-200 cursor-pointer hover:bg-gray-100 px-2 rounded-md'
-                                                        onClick={() => setOpenDropdown("full")}
-                                                    >
-                                                        {req.message}
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div>No Notifications</div>
-                                            )}
-                                        </div>
-                                    )}
                                     <Notifications
                                         className={`border top-10 w-80 absolute transform transition-transform duration-300 ${openDropdown === "full" ? "translate-x-0" : "translate-x-full"
                                             }`}
@@ -171,7 +171,7 @@ export default function Header({ collaborators, setCollaborators }) {
                                     />
                                 </div>
 
-                                <div><button onClick={openInvitation} className='hidden  lg:inline-flex px-5 text-white py-1 bg-blue-600 rounded-md mr-10  cursor-pointer'>Invite</button></div>
+                                <div className=' max-w-[82px]'><button onClick={openInvitation} className='hidden  lg:inline-flex px-5 text-white py-1 bg-blue-600 rounded-md mr-10  cursor-pointer'>Invite</button></div>
                                 <div className='inline-flex lg:hidden text-blue-500 text-xl font-extrabold' onClick={openInvitation}><RiUserSearchFill /></div>
                             </div>
                             <Link to="/profilePage">
@@ -184,10 +184,10 @@ export default function Header({ collaborators, setCollaborators }) {
                                                 className="w-8 h-8 rounded-full"
                                             />
                                         ) : (
-                                            <FaUserCircle className='w-8 h-8 text-gray-500' />
+                                            <FaUserCircle className='w-8 h-8 text-gray' />
                                         )}
                                     </div>
-                                    {user && <p className='text-sm md:text-md text-gray-200'>{user.username}</p>}
+                                    {user && <p className='text-sm md:text-md'>{user.username}</p>}
                                 </div>
                             </Link>
                         </div>

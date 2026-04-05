@@ -13,41 +13,72 @@ import FriendRequest from "./models/friendRequestSchema.js"
 import multer from "multer";
 import path from "path";
 
+
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 dotenv.config();
 const app = express();
+app.set("trust proxy", 1);
 app.use(cookieParser());
 app.use(express.json());
 
 const allowedOrigins = [
     "http://localhost:5173",
     "http://192.168.0.106:5173",
+    "http://10.162.119.125:5173",
+    "http://10.162.119.125:5173/",
     "https://task-manager-omega-weld.vercel.app"
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
+const localNetworkOriginPattern = /^http:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/;
 
-    if (
-      allowedOrigins.includes(origin) ||
-      origin.endsWith(".vercel.app")
-    ) {
-      return callback(null, true);
+const isAllowedOrigin = (origin) =>
+    allowedOrigins.includes(origin) ||
+    origin.endsWith(".vercel.app") ||
+    localNetworkOriginPattern.test(origin);
+
+const getCookieOptions = (req, { includeMaxAge = true } = {}) => {
+    const forwardedProto = req.headers["x-forwarded-proto"];
+    const isHttps =
+        req.secure ||
+        (typeof forwardedProto === "string" && forwardedProto.split(",")[0].trim() === "https");
+
+    const cookieOptions = {
+        httpOnly: true,
+        secure: isHttps,
+        sameSite: isHttps ? "none" : "lax",
+        path: "/"
+    };
+
+    if (includeMaxAge) {
+        cookieOptions.maxAge = 24 * 60 * 60 * 1000;
     }
 
-    callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true
+    return cookieOptions;
+};
+
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+
+        if (isAllowedOrigin(origin)) {
+            return callback(null, true);
+        }
+
+        callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true
 }));
 
 
 
 
 app.use((req, res, next) => {
+    const origin = req.headers.origin;
     res.header("Access-Control-Allow-Credentials", "true");
-    res.header("Access-Control-Allow-Origin", allowedOrigins.includes(req.headers.origin) ? req.headers.origin : "");
+    if (origin && isAllowedOrigin(origin)) {
+        res.header("Access-Control-Allow-Origin", origin);
+    }
     res.header("Access-Control-Allow-Methods", "GET,OPTIONS,POST,PUT,DELETE");
     res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
     if (req.method === "OPTIONS") return res.sendStatus(204);
@@ -98,12 +129,7 @@ app.post("/signUp", async (req, res) => {
             { expiresIn: "1d" }
         );
 
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            maxAge: 24 * 60 * 60 * 1000,
-        });
+        res.cookie("token", token, getCookieOptions(req));
 
         res.status(201).json({
             message: "Account created successfully!",
@@ -121,6 +147,7 @@ app.post("/signUp", async (req, res) => {
 
 
 app.post("/login", async (req, res) => {
+
     try {
         const { email, password } = req.body;
         const existingUser = await User.findOne({ email });
@@ -140,12 +167,7 @@ app.post("/login", async (req, res) => {
             { expiresIn: "1d" }
         );
 
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            maxAge: 24 * 60 * 60 * 1000
-        });
+        res.cookie("token", token, getCookieOptions(req));
 
         console.log("Login cookie set:", token);
 
@@ -173,6 +195,8 @@ export const authMiddleware = (req, res, next) => {
 };
 
 
+
+
 app.post("/username", authMiddleware, async (req, res) => {
     try {
         const { username } = req.body;
@@ -196,7 +220,9 @@ app.post("/username", authMiddleware, async (req, res) => {
 
 app.get("/userInfo", async (req, res) => {
     const token = req.cookies.token;
+
     if (!token) return res.status(401).json({ error: "No token found" });
+
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -292,7 +318,9 @@ app.post("/accept-request", async (req, res) => {
 })
 
 app.post("/create-task", async (req, res) => {
-    const { taskTitle, taskDescription, dueDate, priority, assignedTo, createdBy } = req.body;
+    const { taskTitle, taskDescription, dueDate, priority, assignedTo, createdBy, subtasks } = req.body;
+    console.log('Subtasks in back is ', subtasks);
+
     try {
         const newTask = new UserTasks({
             title: taskTitle,
@@ -301,7 +329,9 @@ app.post("/create-task", async (req, res) => {
             priority,
             assignedTo,
             createdBy,
+            subtasks,
         })
+
         await newTask.save()
 
         return res.status(200).json({ message: "Task Updated" })
@@ -339,6 +369,7 @@ app.get("/assignable-users/:userId", async (req, res) => {
 
 
 app.get("/show-task", async (req, res) => {
+
     const userId = req.query.userId;
 
     const tasks = await UserTasks.find({ createdBy: userId })
@@ -391,19 +422,137 @@ app.patch("/completed-task/:id", async (req, res) => {
 app.use("/uploads", express.static("uploads"));
 
 app.post("/logout", (req, res) => {
-    res.clearCookie("token");
+    res.clearCookie("token", getCookieOptions(req, { includeMaxAge: false }));
     res.status(200).json({ message: "Logged Out Successfully" })
 })
 
 app.delete("/delete-account", authMiddleware, async (req, res) => {
     try {
         await User.findByIdAndDelete(req.userId);
-        res.clearCookie("token");
+        res.clearCookie("token", getCookieOptions(req, { includeMaxAge: false }));
         res.status(200).json({ message: "Account deleted" });
     } catch (error) {
         res.status(500).json({ error: "Server error" });
     }
 })
+
+
+// Task details
+app.get("/task/:id", async (req, res) => {
+    try {
+        const task = await UserTasks.findById(req.params.id);
+
+        if (!task) {
+            return res.status(404).json({ message: "Task not found" });
+        }
+
+        res.json(task);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+app.patch("/tasks/:taskId/subtasks/:subtaskId", async (req, res) => {
+    try {
+        const { taskId, subtaskId } = req.params;
+
+        const task = await UserTasks.findById(taskId);
+
+        const subtask = task.subtasks.id(subtaskId);
+
+        subtask.isCompleted = !subtask.isCompleted;
+
+        await task.save();
+
+        res.json(task);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+app.patch("/add-subTasks/:taskId", async (req, res) => {
+    const { taskId } = req.params;
+    const { title } = req.body;
+
+    try {
+        const updatedTask = await UserTasks.findByIdAndUpdate(
+            taskId,
+            {
+                $push: {
+                    subtasks: {
+                        title,
+                        isCompleted: false
+                    }
+                }
+            },
+            { new: true }
+        );
+
+        return res.status(200).json(updatedTask);
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: "Server error" });
+    }
+});
+
+app.post("/api/users/bulk", async (req, res) => {
+    try {
+        const { ids } = req.body;
+
+        const users = await User.find({
+            _id: { $in: ids }
+        }).select("username profilePic"); // only needed fields
+
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.patch("/edit-task/:taskId", async (req, res) => {
+    console.log(req.body);
+    console.log(req.params.taskId);
+
+    try {
+        const { title, description, priority } = req.body;
+        const { taskId } = req.params;
+
+        const updated = await UserTasks.findByIdAndUpdate(
+            taskId,
+            { title, description, priority },
+            { new: true }
+        );
+
+        res.status(200).json(updated)
+
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "Error updating task" });
+
+    }
+})
+
+app.delete("/deleteSubTask/:subtaskId", async (req, res) => {
+    const { subtaskId } = req.params;
+
+    try {
+        const task = await UserTasks.findOneAndUpdate(
+            { "subtasks._id": subtaskId },
+            { $pull: { subtasks: { _id: subtaskId } } },
+            { new: true }
+        );
+
+        if (!task) {
+            return res.status(404).json({ message: "Subtask not found" });
+        }
+
+        res.status(200).json({ message: "Subtask deleted", task });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 
 const PORT = process.env.PORT || 5000;

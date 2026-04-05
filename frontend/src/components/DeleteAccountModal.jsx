@@ -5,7 +5,30 @@ import { useNavigate } from "react-router-dom";
 
 
 export default function DeleteAccountModal({onConfirm, onClose}) {
+const handleSave = async (updatedData) => {
+        try {
+            const res = await fetch(`${getBaseURL()}/edit-task/${task._id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", },
+                body: JSON.stringify(updatedData)
+            })
 
+            const updatedTask = await res.json();
+
+            setTask(prev =>
+                prev.map(t =>
+                    t._id === selectedTask._id ? updatedTask : t
+                )
+            )
+
+            setIsOpen(false)
+
+        } catch (error) {
+            console.log(error);
+            
+        }
+
+    }
     const navigate = useNavigate()
     const deleteAccount = async() =>{
         try{
