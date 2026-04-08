@@ -85,12 +85,14 @@ export default function TaskModal({ allowMultiple = true, isOpen, onClose }) {
 
             if (!res.ok) {
                 toast.error("Failed to save task")
+
             }
 
             console.log(selectedUsers);
 
 
             toast.success("Task Created Succesfull")
+            onClose()
         } catch (error) {
             console.log(error);
         }
@@ -99,7 +101,9 @@ export default function TaskModal({ allowMultiple = true, isOpen, onClose }) {
 
     const handleGenerate = async () => {
         setLoadingAI(true)
+
         try {
+            if (!taskTitle.trim()) return;
             const res = await fetch(`${getBaseURL()}/generate-subtasks`, {
                 method: "POST",
                 headers: {
@@ -124,7 +128,9 @@ export default function TaskModal({ allowMultiple = true, isOpen, onClose }) {
         } catch (error) {
             console.error(error);
         }
-        setLoadingAI(false)
+        finally {
+            setLoadingAI(false);
+        }
     }
 
 
