@@ -12,15 +12,23 @@ import { OAuth2Client } from "google-auth-library";
 import FriendRequest from "./models/friendRequestSchema.js"
 import multer from "multer";
 import path from "path";
+import { Groq } from "groq-sdk/client.js";
 
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 dotenv.config();
+
+const groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY,
+});
+
 const app = express();
 app.set("trust proxy", 1);
 app.use(cookieParser());
 app.use(express.json());
+console.log("KEY:", process.env.GEMINI_API_KEY);
+console.log("hi");
 
 const allowedOrigins = [
     "http://localhost:5173",
@@ -342,6 +350,65 @@ app.post("/create-task", async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 })
+
+app.post("/generate-subtasks", async (req, res) => {
+    const { title } = req.body;
+
+    try {
+        const completion = await groq.chat.completions.create({
+            messages: [
+                {
+                    role: "user",
+                    content: `Break this task into 5-7 subtasks. Return ONLY a JSON array of strings.\nTask: ${title}`
+                }
+            ],
+            model: "llama-3.1-8b-instant"
+        });
+
+        let response = completion.choices[0].message.content;
+
+        console.log("RAW:", response);
+
+        // clean if needed
+        response = response.replace(/```json|```/g, "").trim();
+
+        let subtasks;
+        try {
+            subtasks = JSON.parse(response);
+        } catch (e) {
+            return res.status(500).json({ message: "Invalid AI format", raw: response });
+        }
+
+        res.json({ subtasks });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "AI error" });
+    }
+});
+
+
+app.post("/test-ai", async (req, res) => {
+    try {
+        const { task } = req.body;
+
+        const response = await groq.chat.completions.create({
+            model: "llama-3.1-8b-instant",
+            messages: [
+                {
+                    role: "user",
+                    content: `Break this task into subtasks:\n${task}`,
+                },
+            ],
+        });
+
+        res.json({ result: response.choices[0].message.content });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.listen(5000, () => console.log("Server running"));
 
 app.get("/assignable-users/:userId", async (req, res) => {
     const currentUserId = req.params.userId;

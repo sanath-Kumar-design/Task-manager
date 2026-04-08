@@ -3,6 +3,8 @@ import Select from 'react-select'
 import { toast } from 'react-toastify';
 import { useUser } from '../context/UserContext';
 import { getBaseURL } from '../../utils/api';
+import GeminiLogo from "../assets/gemini-color.svg?react";
+import { GemIcon } from 'lucide-react';
 
 export default function TaskModal({ allowMultiple = true, isOpen, onClose }) {
     if (!isOpen) return null;
@@ -15,6 +17,8 @@ export default function TaskModal({ allowMultiple = true, isOpen, onClose }) {
     const [collaborators, setCollaborators] = useState([])
     const [subtasks, setSubtasks] = useState([]);
     const [subtaskInput, setSubtaskInput] = useState("");
+    const [loadingAI, setLoadingAI] = useState(false);
+    const [generated, setGenerated] = useState(false);
     const { user } = useUser();
 
 
@@ -70,7 +74,7 @@ export default function TaskModal({ allowMultiple = true, isOpen, onClose }) {
                 method: 'POST',
                 credentials: "include",
                 headers: { 'Content-Type': "application/json" },
-                body: JSON.stringify({ taskTitle, dueDate, priority, createdBy: user._id, taskDescription, assignedTo, subtasks:formattedSubTasks })
+                body: JSON.stringify({ taskTitle, dueDate, priority, createdBy: user._id, taskDescription, assignedTo, subtasks: formattedSubTasks })
             })
 
             const data = await res.json();
@@ -91,6 +95,36 @@ export default function TaskModal({ allowMultiple = true, isOpen, onClose }) {
             console.log(error);
         }
 
+    }
+
+    const handleGenerate = async () => {
+        setLoadingAI(true)
+        try {
+            const res = await fetch(`${getBaseURL()}/generate-subtasks`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ title: taskTitle })
+            });
+
+            const data = await res.json();
+            if (!data.subtasks) {
+                console.error("No subtasks received", data);
+                return;
+            }
+            const formatted = data.subtasks.map((text, i) => ({
+                id: i + Date.now(),
+                text,
+                done: false
+            }));
+            setSubtasks(formatted);
+            setGenerated(true)
+
+        } catch (error) {
+            console.error(error);
+        }
+        setLoadingAI(false)
     }
 
 
@@ -136,13 +170,30 @@ export default function TaskModal({ allowMultiple = true, isOpen, onClose }) {
                         </div>
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
+
                                 <label className="text-sm font-medium text-gray-700">Subtasks</label>
+
                                 <span className="text-xs text-gray-400">
                                     {subtasks.length}/5
                                 </span>
                             </div>
 
                             <div className="space-y-2">
+                                <button
+                                    type="button"
+                                    onClick={handleGenerate}
+                                    disabled={loadingAI}
+                                    className="text-xs bg-blue-100 px-3 py-1 rounded-lg cursor-pointer flex gap-2 items-center"
+                                >
+                                    {loadingAI ? (
+                                        <span className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></span>
+                                    ) : (
+                                        <>
+                                            {generated ? "Generate Again" : "Generate Using AI"}
+                                            <img src={GeminiLogo} width={16} />
+                                        </>
+                                    )}
+                                </button>
                                 <input
                                     value={subtaskInput}
                                     onChange={(e) => setSubtaskInput(e.target.value)}
@@ -152,9 +203,6 @@ export default function TaskModal({ allowMultiple = true, isOpen, onClose }) {
                                 />
                                 {subtasks.map((st) => (
                                     <div key={st.id} className="flex items-center gap-2 group">
-
-
-
                                         <input
                                             value={st.text}
                                             readOnly

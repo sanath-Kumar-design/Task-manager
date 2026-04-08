@@ -124,7 +124,7 @@ export default function Header({ collaborators, setCollaborators, isSidebarOpen,
             />
 
 
-            <header  className=" backdrop-blur-lg border-gray-300 border-b shadow-white ">
+            <header className=" backdrop-blur-lg border-gray-300 border-b shadow-white ">
 
                 <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
@@ -176,15 +176,18 @@ export default function Header({ collaborators, setCollaborators, isSidebarOpen,
                             </div>
                             <Link to="/profilePage">
                                 <div className="flex items-center space-x-2 cursor-pointer">
-                                    <div className='rounded-full h-8 w-8 flex items-center justify-center'>
+                                    <div className='rounded-full h-8 w-8 flex items-center justify-center overflow-hidden'>
                                         {user?.profilePic ? (
                                             <img
                                                 src={`${getBaseURL()}${user.profilePic}`}
                                                 alt="Profile"
-                                                className="w-8 h-8 rounded-full"
+                                                className="w-8 h-8 rounded-full object-cover"
+                                                onError={(e) => {
+                                                    e.target.style.display = "none";
+                                                }}
                                             />
                                         ) : (
-                                            <FaUserCircle className='w-8 h-8 text-gray' />
+                                            <FaUserCircle className='w-8 h-8 text-gray-500' />
                                         )}
                                     </div>
                                     {user && <p className='text-sm md:text-md'>{user.username}</p>}
