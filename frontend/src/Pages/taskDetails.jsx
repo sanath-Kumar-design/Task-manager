@@ -11,7 +11,8 @@ import EditTaskModal from '../components/EditTaskModal';
 import { Navigate } from 'react-router-dom';
 import { CiCircleMinus } from "react-icons/ci";
 import DeleteSubTaskModal from '../components/DeleteSubTaskModal';
-
+import { RiRobot3Line } from "react-icons/ri";
+import TaskChatModel from '../components/TaskChatModel';
 
 export default function Homepage() {
     const navigate = useNavigate();
@@ -26,6 +27,7 @@ export default function Homepage() {
     const [selectedTask, setSelectedTask] = useState(null)
     const [isDeleteOpen, setIsDeleteOpen] = useState(false)
     const [selectedSubTask, setSelectedSubTask] = useState(null)
+    const [chatOpen, setChatOpen] = useState(false);
 
     useEffect(() => {
         if (!task?.assignedTo?.length) return;
@@ -164,8 +166,10 @@ export default function Homepage() {
     const total = task.subtasks?.length || 0;
     const completed = task.subtasks?.filter(s => s.isCompleted).length || 0;
     const percentage = total === 0 ? 0 : Math.round((completed / total) * 100)
+
+
     return (
-        <div>
+        <div className='relative'>
             <div className="fixed w-full z-99 top-0">
                 <Header
                     collaborators={collaborators}
@@ -232,7 +236,7 @@ export default function Homepage() {
                                         {(task?.subtasks || []).map((subtask) => (
                                             <div
                                                 key={subtask._id || subtask.title}
-                                                className={`flex items-center justify-between gap-2 text-sm leading-10
+                                                className={`flex items-center justify-between gap-2 text-sm mb-4
                                                 ${subtask.isCompleted ? "line-through text-gray-400" : ""}`}
                                             >
                                                 <div className='flex items-center gap-3'>
@@ -324,6 +328,19 @@ export default function Homepage() {
                         </div>
                     </div>
                 </div>
+            </div>
+            <div>
+                <div
+                    onClick={() => setChatOpen(true)}
+
+                    className='fixed right-10 bottom-10 border w-13 h-13 flex justify-center items-center rounded-lg cursor-pointer z-50'
+                >
+
+                    <RiRobot3Line className='text-3xl' />
+                </div>
+
+                <TaskChatModel open={chatOpen} onClose={() => setChatOpen(false)} taskId={task._id} currentTask={task} />
+
             </div>
         </div>
     );

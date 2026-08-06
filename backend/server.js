@@ -16,9 +16,9 @@ import { Groq } from "groq-sdk/client.js";
 
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
-
 dotenv.config();
 
+console.log('FULL KEY:', JSON.stringify(process.env.GROQ_API_KEY));
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY,
 });
@@ -27,8 +27,6 @@ const app = express();
 app.set("trust proxy", 1);
 app.use(cookieParser());
 app.use(express.json());
-console.log("KEY:", process.env.GEMINI_API_KEY);
-console.log("hi");
 
 const allowedOrigins = [
     "http://localhost:5173",
@@ -367,7 +365,6 @@ app.post("/generate-subtasks", async (req, res) => {
 
         let response = completion.choices[0].message.content;
 
-        console.log("RAW:", response);
 
         // clean if needed
         response = response.replace(/```json|```/g, "").trim();
@@ -388,25 +385,25 @@ app.post("/generate-subtasks", async (req, res) => {
 });
 
 
-app.post("/test-ai", async (req, res) => {
-    try {
-        const { task } = req.body;
+// app.post("/test-ai", async (req, res) => {
+//     try {
+//         const { task } = req.body;
 
-        const response = await groq.chat.completions.create({
-            model: "llama-3.1-8b-instant",
-            messages: [
-                {
-                    role: "user",
-                    content: `Break this task into subtasks:\n${task}`,
-                },
-            ],
-        });
+//         const response = await groq.chat.completions.create({
+//             model: "llama-3.1-8b-instant",
+//             messages: [
+//                 {
+//                     role: "user",
+//                     content: `Break this task into subtasks:\n${task}`,
+//                 },
+//             ],
+//         });
 
-        res.json({ result: response.choices[0].message.content });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+//         res.json({ result: response.choices[0].message.content });
+//     } catch (err) {
+//         res.status(500).json({ error: err.message });
+//     }
+// });
 
 app.listen(5000, () => console.log("Server running"));
 
@@ -620,6 +617,144 @@ app.delete("/deleteSubTask/:subtaskId", async (req, res) => {
         res.status(200).json({ message: "Subtask deleted", task });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+app.post("/test-ai", async (req, res) => {
+    try {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${process.env.GROQ_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "llama-3.1-8b-instant", // safe model
+                messages: [
+                    {
+                        role: "system",
+                        content:
+                            `You are an AI assistant for a task management system.
+
+                                Rules:
+
+                                1. If user sends greetings (hi, hello, hey):
+                                → Reply ONLY: "Hi, how can I help?"
+                                → when a user greets, always say "Hi" first
+                                
+                                → Do NOT mention task details.
+
+                                2. If question is unrelated to task:
+                                → Reply: "Not related to task"
+
+                                3. Otherwise:
+                                → Answer ONLY based on the given task.
+
+                                Response Style:
+                                - Keep answers very short (3-6 words)
+                                - Use bullet points if needed
+                                - Give long answers ONLY if user asks
+
+                                Goal:
+                                Help user complete the task efficiently.`
+                    },
+                    {
+                        role: "user",
+                        content: `
+                            Task Title: Build login system
+                            Description: React + Node auth
+                            Subtasks: API, UI, validation
+                            Question: How should I start?
+                            `
+                    }
+                ]
+            })
+        });
+
+        const data = await response.json();
+
+        console.log(data); // debug
+
+        res.json({
+            reply: data?.choices?.[0]?.message?.content || "No response"
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "AI test failed" });
+    }
+});
+
+
+app.post("/tasks/:taskId/ai-chat", async (req, res) => {
+    try {
+        const { messages = [] } = req.body;
+        const { taskId } = req.params;
+        const task = req.body.task;
+        const finalMessages = [
+            {
+                role: "system",
+                content:
+                    `You are an AI assistant for a task management system.
+
+                                Rules:
+
+                                1. If user sends greetings (hi, hello, hey):
+                                → Reply ONLY: "Hi, how can I help?"
+                                → when a user greets, always say "Hi" first
+                                
+                                → Do NOT mention task details.
+
+                                2. If question is unrelated to task:
+                                → Reply: "Not related to task"
+
+                                3. Otherwise:
+                                → Answer ONLY based on the given task.
+
+                                Response Style:
+                                - Keep answers very short (3-6 words)
+                                - Use bullet points if needed
+                                - Give long answers ONLY if user asks
+
+                                Goal:
+                                Help user complete the task efficiently.`
+            },
+            {
+                role: "user",
+                content: `
+            Task:
+                    Title: ${task.title}
+            Description: ${task.description}
+            Subtasks: ${task.subtasks?.join(", ")}
+            Due Date: ${task.dueDate}
+            Assiigned user: ${taskId.assignedTo?.userName}
+
+            User question: ${messages[messages.length - 1]?.content}
+            Answer only based on this task.
+            `
+            }
+        ];
+
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${process.env.GROQ_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "llama-3.1-8b-instant",
+                messages: finalMessages
+            })
+        });
+
+        const data = await response.json();
+
+        res.json({
+            reply: data?.choices?.[0]?.message?.content || "No reply"
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: "AI failed" });
     }
 });
 

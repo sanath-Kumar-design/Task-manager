@@ -183,7 +183,7 @@ export default function MainPage({ collaborators, selected }) {
             />
             <main className="flex-1 p-6 border-red-500 mt-10">
                 <div className="max-w-7xl mx-auto flex gap-4">
-                    <div className=' w-full '>
+                    <div className=' w-full md:mr-45'>
                         <div className='border border-gray-300 py-4 px-4 rounded-2xl'>
                             <div className="flex justify-between items-center mb-6">
                                 <div>
@@ -227,7 +227,7 @@ export default function MainPage({ collaborators, selected }) {
                         {statusList === "In Progress" && (
                             <div>
                                 <div className='my-4'>
-                                    <h1 className="text-2xl font-bold text-white">Tasks</h1>
+                                    <h1 className="text-2xl font-bold ">Tasks</h1>
                                 </div>
 
                                 {displayedTasks && displayedTasks.filter(task => {
@@ -433,7 +433,7 @@ export default function MainPage({ collaborators, selected }) {
                             )}
                         </div>
                     </div>
-                    <div className='max-w-[250px] w-full ml-auto border hidden md:flex flex-col items-center py-5 border-gray-300 rounded-2xl  text-sm'>
+                    <div className='max-w-[250px] w-full ml-auto border hidden md:flex flex-col items-center py-5 border-gray-300 rounded-2xl  text-sm fixed right-8'>
                         <div className='flex justify-center'>
                             <div className='rounded-full h-12 w-12 flex items-center justify-center overflow-hidden border border-green-500 border-2'>
                                 {user?.profilePic ? (
