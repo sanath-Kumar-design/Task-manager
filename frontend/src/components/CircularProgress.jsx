@@ -48,9 +48,9 @@ export default function CircularProgress({ percentage }) {
                     textAnchor="middle"
                     fontSize="20"
                     fontWeight="bold"
-                    fill="#111"
+                    fill="#ffffff"
                 >
-                    {percentage}%
+                    {safePercentage}%
                 </text>
 
                 <text
@@ -58,7 +58,7 @@ export default function CircularProgress({ percentage }) {
                     y="65%"
                     textAnchor="middle"
                     fontSize="12"
-                    fill="#6b7280"
+                    fill="#ffffff"
                 >
                     Complete
                 </text>

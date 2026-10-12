@@ -1,4 +1,3 @@
-
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
@@ -13,17 +12,20 @@ import FriendRequest from "./models/friendRequestSchema.js"
 import multer from "multer";
 import path from "path";
 import { Groq } from "groq-sdk/client.js";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import Message from "./models/message.js";
 
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 dotenv.config();
 
-console.log('FULL KEY:', JSON.stringify(process.env.GROQ_API_KEY));
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY,
 });
 
 const app = express();
+const httpServer = createServer(app)
 app.set("trust proxy", 1);
 app.use(cookieParser());
 app.use(express.json());
@@ -55,6 +57,19 @@ app.use(cors({
     },
     credentials: true
 }));
+
+const io = new Server(httpServer, {
+    cors: {
+        origin: [
+            "http://localhost:5173",
+            "http://10.135.78.125:5173",
+            "https://task-manager-omega-weld.vercel.app",
+        ],
+        credentials: true,
+    },
+});
+
+console.log("Socket.IO initialized:", io.engine !== undefined);
 
 const getCookieOptions = (req, { includeMaxAge = true } = {}) => {
     const forwardedProto = req.headers["x-forwarded-proto"];
@@ -154,38 +169,73 @@ app.post("/signUp", async (req, res) => {
 });
 
 
-app.post("/login", async (req, res) => {
 
+app.post("/login", async (req, res) => {
     try {
         const { email, password } = req.body;
-        const existingUser = await User.findOne({ email });
 
+        // 1. Validate required fields
+        if (
+            typeof email !== "string" ||
+            typeof password !== "string" ||
+            !email.trim() ||
+            !password
+        ) {
+            return res.status(400).json({
+                error: "Email and password are required",
+            });
+        }
+
+        // 2. Find the user
+        const existingUser = await User.findOne({
+            email: email.trim(),
+        });
+
+        // 3. Handle nonexistent user
         if (!existingUser) {
-            return res.status(400).json({ error: "User not found" });
+            return res.status(401).json({
+                error: "Invalid email or password",
+            });
         }
 
-        const isMatch = await bcrypt.compare(password, existingUser.password);
+        // 4. Verify password
+        const isMatch = await bcrypt.compare(
+            password,
+            existingUser.password
+        );
+
         if (!isMatch) {
-            return res.status(400).json({ error: "Wrong password" });
+            return res.status(401).json({
+                error: "Invalid email or password",
+            });
         }
 
+        // 5. Generate JWT
         const token = jwt.sign(
-            { id: existingUser._id, email: existingUser.email },
+            {
+                id: existingUser._id,
+                email: existingUser.email,
+            },
             process.env.JWT_SECRET,
             { expiresIn: "1d" }
         );
 
+        // 6. Set authentication cookie
         res.cookie("token", token, getCookieOptions(req));
 
-        console.log("Login cookie set:", token);
-
-        res.status(200).json({ message: "Login successful" });
-
+        // 7. Return success
+        return res.status(200).json({
+            message: "Login successful",
+        });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Server error" });
+        console.error("Login error:", err);
+
+        return res.status(500).json({
+            error: "Server error",
+        });
     }
 });
+
 
 
 
@@ -203,7 +253,149 @@ export const authMiddleware = (req, res, next) => {
 };
 
 
+const canAccessTask = async (taskId, userId) => {
+    if (
+        !mongoose.isValidObjectId(taskId) ||
+        !mongoose.isValidObjectId(userId)
+    ) {
+        return false;
+    }
 
+    const task = await UserTasks.findById(taskId)
+        .select("createdBy assignedTo");
+
+    if (!task) return false;
+
+    const isCreator =
+        String(task.createdBy) === String(userId);
+
+    const isAssigned = task.assignedTo.some(
+        (user) => String(user) === String(userId)
+    );
+
+    return isCreator || isAssigned;
+};
+
+io.use((socket, next) => {
+    try {
+        const cookieHeader = socket.handshake.headers.cookie || "";
+
+        const tokenCookie = cookieHeader
+            .split(";")
+            .map((cookie) => cookie.trim())
+            .find((cookie) => cookie.startsWith("token="));
+
+        if (!tokenCookie) {
+            return next(new Error("Authentication required"));
+        }
+
+        const token = decodeURIComponent(
+            tokenCookie.substring("token=".length)
+        );
+
+        const decoded = jwt.verify(
+            token,
+            process.env.JWT_SECRET
+        );
+
+        socket.data.userId = decoded.id;
+
+        next();
+    } catch (error) {
+        next(new Error("Invalid authentication"));
+    }
+});
+
+io.on("connection", (socket) => {
+    console.log("Chat connected:", socket.data.userId);
+
+    socket.on("task:join", async (taskId, callback) => {
+        try {
+            const allowed = await canAccessTask(
+                taskId,
+                socket.data.userId
+            );
+
+            if (!allowed) {
+                return callback?.({
+                    ok: false,
+                    error: "You cannot access this task chat",
+                });
+            }
+
+            socket.join(`task:${taskId}`);
+
+            callback?.({ ok: true });
+        } catch (error) {
+            console.error("Join task chat error:", error);
+
+            callback?.({
+                ok: false,
+                error: "Could not join chat",
+            });
+        }
+    });
+
+    socket.on("disconnect", () => {
+        console.log("Chat disconnected:", socket.data.userId);
+    });
+
+    socket.on("task:send", async (payload, callback) => {
+        try {
+            const { taskId, content } = payload || {};
+
+            if (
+                typeof content !== "string" ||
+                !content.trim() ||
+                content.trim().length > 2000
+            ) {
+                return callback?.({
+                    ok: false,
+                    error: "Message must contain 1-2000 characters",
+                });
+            }
+
+            const allowed = await canAccessTask(
+                taskId,
+                socket.data.userId
+            );
+
+            if (!allowed) {
+                return callback?.({
+                    ok: false,
+                    error: "You cannot send messages to this task",
+                });
+            }
+
+            const message = await Message.create({
+                task: taskId,
+                sender: socket.data.userId,
+                content: content.trim(),
+            });
+
+            const populatedMessage = await Message.findById(message._id)
+                .populate(
+                    "sender",
+                    "username firstName lastName profilePic"
+                );
+
+            io.to(`task:${taskId}`).emit(
+                "task:message",
+                populatedMessage
+            );
+
+            callback?.({ ok: true });
+        } catch (error) {
+            console.error("Send message error:", error);
+
+            callback?.({
+                ok: false,
+                error: "Failed to send message",
+            });
+        }
+    });
+
+});
 
 app.post("/username", authMiddleware, async (req, res) => {
     try {
@@ -360,7 +552,7 @@ app.post("/generate-subtasks", async (req, res) => {
                     content: `Break this task into 5-7 subtasks. Return ONLY a JSON array of strings.\nTask: ${title}`
                 }
             ],
-            model: "llama-3.1-8b-instant"
+            model: "openai/gpt-oss-20b",
         });
 
         let response = completion.choices[0].message.content;
@@ -405,42 +597,74 @@ app.post("/generate-subtasks", async (req, res) => {
 //     }
 // });
 
-app.listen(5000, () => console.log("Server running"));
 
 app.get("/assignable-users/:userId", async (req, res) => {
-    const currentUserId = req.params.userId;
+    const { userId } = req.params;
 
     try {
         const invites = await FriendRequest.find({
             status: "accepted",
             $or: [
-                { from: currentUserId },
-                { to: currentUserId }
+                { from: userId },
+                { to: userId }
             ]
         }).populate("from to", "username _id");
 
-        const usersToAssign = invites.map(inv =>
-            inv.from._id.toString() === currentUserId ? inv.to : inv.from
-        );
+        const usersToAssign = invites
+            .map((inv) => {
+                // Skip requests with missing populated users
+                if (!inv.from || !inv.to) {
+                    console.warn(
+                        "Friend request has a missing user:",
+                        inv._id
+                    );
+                    return null;
+                }
 
-        const uniqueUsers = [...new Map(usersToAssign.map(u => [u._id.toString(), u])).values()];
+                return inv.from._id.toString() === userId
+                    ? inv.to
+                    : inv.from;
+            })
+            .filter(Boolean);
 
-        res.json(uniqueUsers);
+        // Remove duplicate users
+        const uniqueUsers = [
+            ...new Map(
+                usersToAssign.map((user) => [
+                    user._id.toString(),
+                    user
+                ])
+            ).values()
+        ];
+
+        return res.status(200).json(uniqueUsers);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server error" });
+        console.error("Error fetching assignable users:", err);
+
+        return res.status(500).json({
+            message: "Failed to fetch assignable users",
+            error: err.message
+        });
     }
 });
 
 
-
 app.get("/show-task", async (req, res) => {
+    try {
+        const userId = req.query.userId;
 
-    const userId = req.query.userId;
+        const tasks = await UserTasks.find({
+            $or: [
+                { createdBy: userId },
+                { assignedTo: userId }
+            ]
+        }).populate("assignedTo", "username profilePic");
 
-    const tasks = await UserTasks.find({ createdBy: userId })
-        .populate("assignedTo", "username profilePic");
-    res.json(tasks);
+        res.json(tasks);
+    } catch (error) {
+        console.error("Fetch tasks error:", error);
+        res.status(500).json({ error: "Failed to fetch tasks" });
+    }
 });
 
 app.post("/upload", upload.single("profilePic"), async (req, res) => {
@@ -517,6 +741,47 @@ app.get("/task/:id", async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
+
+
+
+app.get(
+    "/tasks/:taskId/messages",
+    authMiddleware,
+    async (req, res) => {
+        try {
+            const { taskId } = req.params;
+
+            const allowed = await canAccessTask(
+                taskId,
+                req.userId
+            );
+
+            if (!allowed) {
+                return res.status(403).json({
+                    error: "You cannot access this task chat",
+                });
+            }
+
+            const messages = await Message.find({
+                task: taskId,
+            })
+                .populate(
+                    "sender",
+                    "username firstName lastName profilePic"
+                )
+                .sort({ createdAt: 1 })
+                .limit(200);
+
+            res.json(messages);
+        } catch (error) {
+            console.error("Fetch messages error:", error);
+
+            res.status(500).json({
+                error: "Failed to fetch messages",
+            });
+        }
+    }
+);
 
 app.patch("/tasks/:taskId/subtasks/:subtaskId", async (req, res) => {
     try {
@@ -629,7 +894,7 @@ app.post("/test-ai", async (req, res) => {
                 Authorization: `Bearer ${process.env.GROQ_API_KEY}`
             },
             body: JSON.stringify({
-                model: "llama-3.1-8b-instant", // safe model
+                model: "openai/gpt-oss-20b", // safe model
                 messages: [
                     {
                         role: "system",
@@ -742,7 +1007,7 @@ app.post("/tasks/:taskId/ai-chat", async (req, res) => {
                 Authorization: `Bearer ${process.env.GROQ_API_KEY}`
             },
             body: JSON.stringify({
-                model: "llama-3.1-8b-instant",
+                model: "openai/gpt-oss-20b",
                 messages: finalMessages
             })
         });
@@ -760,7 +1025,10 @@ app.post("/tasks/:taskId/ai-chat", async (req, res) => {
 
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+
+httpServer.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on port ${PORT}`);
+});
 
 
 

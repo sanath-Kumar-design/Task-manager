@@ -3,6 +3,7 @@ import { getBaseURL } from '../../utils/api'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import MainPage from '../components/MainPage'
+import TaskChat from '../components/TaskChat'
 
 export default function Homepage() {
     const [collaborators, setCollaborators] = useState([]);
@@ -20,16 +21,26 @@ export default function Homepage() {
                 />
             </div>
 
-            <div className="flex relative">
-                <div className={`fixed top-0 left-0 h-full w-64 bg-gray-900 transform transition-transform duration-300 z-50
-                        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-
-                    <Sidebar selected={selected} setSelected={setSelected} setSidebarOpen={setSidebarOpen} />
-
+            <div className="flex relative pt-16">
+                {/* Sidebar */}
+                <div
+                    className={`fixed left-0 top-16 z-40 h-[calc(100vh-4rem)]
+                    w-64 transition-transform duration-200 ease-out
+                    ${isSidebarOpen
+                            ? "translate-x-0"
+                            : "-translate-x-full"
+                        }
+                    md:translate-x-0`}
+                >
+                    <Sidebar
+                        selected={selected}
+                        setSelected={setSelected}
+                        setSidebarOpen={setSidebarOpen}
+                    />
                 </div>
 
 
-                <div className="mt-10 flex-1">
+                <div className="min-w-0 flex-1 md:ml-64">
                     <MainPage collaborators={collaborators} selected={selected} />
                 </div>
             </div>
