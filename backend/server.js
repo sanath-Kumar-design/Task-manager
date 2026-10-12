@@ -58,15 +58,19 @@ app.use(cors({
     credentials: true
 }));
 
+
 const io = new Server(httpServer, {
-    cors: {
-        origin: [
-            "http://localhost:5173",
-            "http://10.135.78.125:5173",
-            "https://task-manager-omega-weld.vercel.app",
-        ],
-        credentials: true,
+  cors: {
+    origin: (origin, callback) => {
+      if (!origin || isAllowedOrigin(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
     },
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
 });
 
 console.log("Socket.IO initialized:", io.engine !== undefined);
